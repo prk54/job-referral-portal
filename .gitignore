@@ -1,0 +1,20 @@
+# Environment files — never commit secrets
+backend/.env
+frontend/.env
+
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
