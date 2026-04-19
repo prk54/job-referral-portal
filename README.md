@@ -2,6 +2,12 @@
 
 A full-stack job referral platform where professionals post jobs and job seekers get matched via a keyword-based engine. No LLMs — pure regex + skill dictionary matching.
 
+## Demo
+
+![JobReferral Portal demo](demo.gif)
+
+> **Referrer** posts a job with required skills → **Seeker** uploads a PDF resume → matches appear instantly, sorted by % relevance with color-coded scores.
+
 ## Tech Stack
 
 | Layer | Technology |

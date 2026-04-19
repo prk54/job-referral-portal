@@ -34,6 +34,7 @@ def get_matches(
         .select("*, jobs(id, title, company, skills_required, whatsapp_link, created_at)")
         .eq("seeker_id", profile["id"])
         .eq("status", "completed")
+        .gt("score", 0)
         .order("score", desc=True)
         .execute()
     )

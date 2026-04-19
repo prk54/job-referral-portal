@@ -1,10 +1,11 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
 from supabase import Client
 
 from deps import get_current_user, get_supabase
+from services.matcher import run_matching_for_new_job
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -40,6 +41,7 @@ def _normalize_job(job: dict) -> dict:
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_job(
     body: JobCreate,
+    background_tasks: BackgroundTasks,
     profile: dict = Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
@@ -60,7 +62,9 @@ def create_job(
         )
         .execute()
     )
-    return _normalize_job(result.data[0])
+    job = result.data[0]
+    background_tasks.add_task(run_matching_for_new_job, job["id"], body.skills_required, supabase)
+    return _normalize_job(job)
 
 
 @router.get("")
