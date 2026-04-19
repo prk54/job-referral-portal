@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from supabase import Client
@@ -11,7 +13,28 @@ class JobCreate(BaseModel):
     title: str
     company: str
     skills_required: list[str]
-    whatsapp_link: str
+    whatsapp_number: str
+    job_link: str | None = None
+
+
+def _decode_contact(raw: str) -> dict:
+    """Decode whatsapp_link column which may be a JSON blob or a legacy URL."""
+    if not raw:
+        return {"whatsapp_number": "", "job_link": None}
+    if raw.startswith("{"):
+        try:
+            parsed = json.loads(raw)
+            return {"whatsapp_number": parsed.get("wa", ""), "job_link": parsed.get("job")}
+        except json.JSONDecodeError:
+            pass
+    # Legacy: full wa.me URL
+    number = raw.replace("https://wa.me/", "").replace("http://wa.me/", "")
+    return {"whatsapp_number": number, "job_link": None}
+
+
+def _normalize_job(job: dict) -> dict:
+    contact = _decode_contact(job.pop("whatsapp_link", "") or "")
+    return {**job, **contact}
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -23,6 +46,7 @@ def create_job(
     if profile["role"] != "referrer":
         raise HTTPException(status_code=403, detail="Only referrers can post jobs")
 
+    contact_blob = json.dumps({"wa": body.whatsapp_number, "job": body.job_link})
     result = (
         supabase.table("jobs")
         .insert(
@@ -31,12 +55,12 @@ def create_job(
                 "title": body.title,
                 "company": body.company,
                 "skills_required": body.skills_required,
-                "whatsapp_link": body.whatsapp_link,
+                "whatsapp_link": contact_blob,
             }
         )
         .execute()
     )
-    return result.data[0]
+    return _normalize_job(result.data[0])
 
 
 @router.get("")
@@ -56,7 +80,7 @@ def list_jobs(
         result = (
             supabase.table("jobs").select("*").order("created_at", desc=True).execute()
         )
-    return result.data
+    return [_normalize_job(j) for j in result.data]
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)

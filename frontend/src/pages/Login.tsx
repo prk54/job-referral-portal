@@ -31,38 +31,37 @@ export function Login() {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (authError) {
-      setError(authError.message);
-      setSubmitting(false);
-      return;
-    }
-    await refreshProfile();
-    // AuthContext will redirect via onAuthStateChange
-    const { data } = await supabase.auth.getSession();
-    if (data.session) {
-      // fetch profile to get role
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/profile/me`,
-          {
-            headers: {
-              Authorization: `Bearer ${data.session.access_token}`,
-            },
-          }
-        );
-        const p = await res.json();
-        navigate(p.role === "referrer" ? "/referrer" : "/seeker", {
-          replace: true,
-        });
-      } catch {
-        setError("Could not load profile. Try again.");
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (authError) {
+        setError(authError.message);
+        return;
       }
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        setError("Login failed. Please try again.");
+        return;
+      }
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/profile/me`,
+        { headers: { Authorization: `Bearer ${data.session.access_token}` } }
+      );
+      if (!res.ok) {
+        setError("Could not load profile. Try again.");
+        return;
+      }
+      const p = await res.json();
+      await refreshProfile();
+      navigate(p.role === "referrer" ? "/referrer" : "/seeker", { replace: true });
+    } catch (err) {
+      setError("Something went wrong. Check your connection and try again.");
+      console.error(err);
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   return (

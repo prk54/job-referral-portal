@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// Flat list of canonical skills for the multi-select
 const ALL_SKILLS = [
   "Python","JavaScript","TypeScript","Java","Go","Rust","C++","C#","Ruby","PHP",
   "Swift","Kotlin","Scala","Bash","React","Vue","Angular","Next.js","Svelte",
@@ -36,7 +35,8 @@ export function PostJob() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [jobLink, setJobLink] = useState("");
   const [skillSearch, setSkillSearch] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [error, setError] = useState("");
@@ -60,13 +60,18 @@ export function PostJob() {
       setError("Add at least one required skill.");
       return;
     }
+    if (!/^\+?\d{7,15}$/.test(whatsappNumber.replace(/\s/g, ""))) {
+      setError("Enter a valid WhatsApp number (digits only, e.g. 919876543210).");
+      return;
+    }
     setError("");
     setSubmitting(true);
     try {
       await api.post("/api/jobs", {
         title,
         company,
-        whatsapp_link: whatsapp,
+        whatsapp_number: whatsappNumber.replace(/\s/g, ""),
+        job_link: jobLink || null,
         skills_required: selectedSkills,
       });
       navigate("/referrer");
@@ -78,50 +83,79 @@ export function PostJob() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-6 text-2xl font-semibold">Post a job</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Job details</CardTitle>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Post a job</h1>
+        <p className="mt-1 text-sm text-slate-500">Fill in the details and required skills to start matching candidates.</p>
+      </div>
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="border-b border-slate-100 pb-4">
+          <CardTitle className="text-base font-semibold text-slate-700">Job details</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-5">
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1">
-              <Label>Job title</Label>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-slate-700">Job title</Label>
               <Input
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Senior Backend Engineer"
+                className="border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20"
               />
             </div>
-            <div className="space-y-1">
-              <Label>Company</Label>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-slate-700">Company</Label>
               <Input
                 required
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 placeholder="e.g. Acme Corp"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>WhatsApp link</Label>
-              <Input
-                required
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="https://wa.me/1234567890"
+                className="border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20"
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium text-slate-700">
+                  WhatsApp number
+                  <span className="ml-1 text-xs text-slate-400 font-normal">(with country code)</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">+</span>
+                  <Input
+                    required
+                    type="tel"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^\d\s+]/g, ""))}
+                    placeholder="919876543210"
+                    className="pl-7 border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium text-slate-700">
+                  Job link
+                  <span className="ml-1 text-xs text-slate-400 font-normal">(optional)</span>
+                </Label>
+                <Input
+                  type="url"
+                  value={jobLink}
+                  onChange={(e) => setJobLink(e.target.value)}
+                  placeholder="https://jobs.example.com/..."
+                  className="border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20"
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label>Required skills</Label>
+              <Label className="text-sm font-medium text-slate-700">Required skills</Label>
               {selectedSkills.length > 0 && (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1.5 rounded-lg border border-slate-100 bg-slate-50 p-2">
                   {selectedSkills.map((s) => (
                     <Badge
                       key={s}
                       variant="secondary"
-                      className="cursor-pointer"
+                      className="cursor-pointer bg-indigo-100 text-indigo-700 hover:bg-red-100 hover:text-red-700 transition-colors"
                       onClick={() => toggleSkill(s)}
                     >
                       {s} ×
@@ -133,19 +167,18 @@ export function PostJob() {
                 placeholder="Search skills…"
                 value={skillSearch}
                 onChange={(e) => setSkillSearch(e.target.value)}
+                className="border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20"
               />
               {skillSearch && (
-                <div className="rounded-md border bg-popover p-1 shadow-sm">
+                <div className="rounded-lg border border-slate-200 bg-white p-1 shadow-md">
                   {filtered.length === 0 ? (
-                    <p className="px-2 py-1 text-sm text-muted-foreground">
-                      No matches
-                    </p>
+                    <p className="px-3 py-2 text-sm text-slate-400">No matches</p>
                   ) : (
                     filtered.map((s) => (
                       <button
                         key={s}
                         type="button"
-                        className="w-full rounded px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                        className="w-full rounded-md px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
                         onClick={() => {
                           toggleSkill(s);
                           setSkillSearch("");
@@ -157,18 +190,31 @@ export function PostJob() {
                   )}
                 </div>
               )}
+              {selectedSkills.length === 0 && !skillSearch && (
+                <p className="text-xs text-slate-400">Type above to search and add skills</p>
+              )}
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex gap-2">
+            {error && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate("/referrer")}
+                className="border-slate-200 text-slate-600"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting}>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-sm"
+              >
                 {submitting ? "Posting…" : "Post job"}
               </Button>
             </div>
